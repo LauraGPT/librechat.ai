@@ -39,11 +39,11 @@ const cspHeader = `
 const nonPermanentRedirects = [
   ['/discord', 'https://discord.librechat.ai'],
   ['/demo', 'https://chat.librechat.ai'],
-  ['/issue', 'https://github.com/danny-avila/LibreChat/issues/new/choose'],
-  ['/new-issue', 'https://github.com/danny-avila/LibreChat/issues/new/choose'],
-  ['/issues', 'https://github.com/danny-avila/LibreChat/issues'],
-  ['/gh-support', 'https://github.com/danny-avila/LibreChat/discussions/categories/support'],
-  ['/gh-discussions', 'https://github.com/danny-avila/LibreChat/discussions'],
+  ['/issue', 'https://github.com/LibreChat-AI/LibreChat/issues/new/choose'],
+  ['/new-issue', 'https://github.com/LibreChat-AI/LibreChat/issues/new/choose'],
+  ['/issues', 'https://github.com/LibreChat-AI/LibreChat/issues'],
+  ['/gh-support', 'https://github.com/LibreChat-AI/LibreChat/discussions/categories/support'],
+  ['/gh-discussions', 'https://github.com/LibreChat-AI/LibreChat/discussions'],
   ['/roadmap', '/blog/2026-02-18_2026_roadmap'],
   ['/features', '/docs/features'],
   ['/docs/configuration/azure', '/docs/configuration/librechat_yaml/ai_endpoints/azure'],
@@ -59,8 +59,21 @@ const nonPermanentRedirects = [
   ['/docs/features/plugins', '/docs/features/agents'],
   ['/docs/features/speech-to-text', '/docs/configuration/stt_tts'],
   ['/docs/configuration/librechat_yaml/setup', '/docs/configuration/librechat_yaml'],
-  ['/toolkit/yaml_checker', '/toolkit/yaml-checker'],
-  ['/toolkit/creds_generator', '/toolkit/creds-generator'],
+  // The toolkit pages live under /docs/toolkit; these are the pre-Fumadocs URLs
+  // still linked from older posts and bookmarks. In-page links are canonicalized
+  // at render time by lib/localize-href.ts, but a direct hit only has these, so
+  // both spellings of each slug have to land on the real page rather than on the
+  // other spelling.
+  ['/toolkit', '/docs/toolkit'],
+  ['/toolkit/yaml_checker', '/docs/toolkit/yaml-validator'],
+  ['/toolkit/yaml-checker', '/docs/toolkit/yaml-validator'],
+  ['/toolkit/creds_generator', '/docs/toolkit/credentials-generator'],
+  ['/toolkit/creds-generator', '/docs/toolkit/credentials-generator'],
+  // Nav-only folder: the section's landing page is the Config Structure reference.
+  [
+    '/docs/configuration/librechat_yaml/object_structure',
+    '/docs/configuration/librechat_yaml/object_structure/config',
+  ],
 ]
 
 /**
@@ -112,6 +125,13 @@ const SHARED_CDN_CACHE = 'public, s-maxage=86400, stale-while-revalidate=604800'
 const LIVE_DATA_CDN_CACHE = 'public, s-maxage=3600, stale-while-revalidate=86400'
 const LIVE_DATA_PATHS = ['/blog/2026-07-26_clickhouse-analytics']
 
+const AGENT_DISCOVERY_LINKS = [
+  '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"',
+  '</openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json;version=3.1"',
+  '</docs>; rel="service-doc"; type="text/html"',
+  '</llms.txt>; rel="describedby"; type="text/markdown"',
+].join(', ')
+
 /**
  * Cache rules for one source: the document response stays shared-cacheable at
  * the given TTL, while the two variants that share its cache key — the RSC
@@ -135,6 +155,20 @@ const cdnRulesFor = (source, cache) => [
     headers: [{ key: 'Cache-Control', value: 'private, no-store' }],
   },
 ]
+
+const MARKDOWN_NEGOTIATED_PATHS = [
+  '/docs/:path*',
+  // Localized docs need the same cache partitioning and edge-cache policy as English.
+  '/(zh|es|fr|de|ja|pt-BR|it|nl|pl|vi|ko|id|tr)/docs/:path*',
+]
+
+// Middleware response headers are replaced when the App Router emits its RSC
+// Vary value. Configure Accept at the route layer so Next appends its own
+// variants instead of dropping the content-negotiation cache key.
+const markdownNegotiatedVaryHeaders = MARKDOWN_NEGOTIATED_PATHS.map((source) => ({
+  source,
+  headers: [{ key: 'Vary', value: 'Accept' }],
+}))
 
 // The narrower live-data rules come last so their Cache-Control overrides the
 // shared value on the paths they match.
@@ -166,6 +200,7 @@ const config = {
       './lib/fonts/Geist-SemiBold.ttf',
       './public/librechat.png',
     ],
+    '/mcp': ['./content/docs/**/*.mdx'],
   },
   typescript: {
     ignoreBuildErrors: false,
@@ -291,6 +326,16 @@ const config = {
           },
         ],
       },
+      {
+        source: '/',
+        headers: [
+          {
+            key: 'Link',
+            value: AGENT_DISCOVERY_LINKS,
+          },
+        ],
+      },
+      ...markdownNegotiatedVaryHeaders,
       ...cdnCacheHeaders,
     ]
   },

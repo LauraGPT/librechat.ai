@@ -8,7 +8,7 @@
 
 <p align="center">
   The official documentation, blog, and changelog for
-  <a href="https://github.com/danny-avila/LibreChat">LibreChat</a>,
+  <a href="https://github.com/LibreChat-AI/LibreChat">LibreChat</a>,
   the open-source, self-hostable AI chat platform.
 </p>
 
@@ -26,12 +26,40 @@
 
 ---
 
+## What's New in LibreChat v0.8.8-rc2
+
+- **Agent run control:** Interrupt an Agent before visible answer text, steer runs with files and quoted excerpts, durably queue follow-ups, and recover saved partial work with **Keep going** or **Answer now**.
+- **Agent activity:** Optional generated labels group reasoning and tool work, summarize multi-step phases, and show the current reasoning direction.
+- **Human-in-the-loop Agents:** Stream up to four related questions, pause for input or tool approval, and resume durably.
+- **Unified Agent Builder:** Configure Skills, MCP, Code Interpreter, orchestration, Programmatic Tool Calling, model-spec controls, and per-tool background and intent settings in one Tools marketplace; Skills can be enabled for standalone runtime authoring without exposing the existing catalog.
+- **Durable Agent automation:** Authenticated Agent Events support bound child actors, expected-action receipts, per-actor mailboxes, event batching, durable human pauses, and automatic detached Actions across built-in stream stores.
+- **Deeper Subagent history:** Browse branch-aware child turns with bounded reasoning and stable live event views, load earlier activity, inspect event details, continue completed child chats, and automatically wake saved parent Agents when detached work settles.
+- **Background tools:** Eligible Code Interpreter, MCP, Plugin, and Action tools can run while an Agent keeps working, with automatic delivery for supported completions and polling controls when needed.
+- **Code Interpreter workflows:** Sandbox images return as viewable artifacts; highly experimental stateful sessions add scoped managed, attached, or personal environments, per-message file downloads, and guarded file-write and command permissions.
+- **Agent extensibility:** Experimental Agent Plugins bundle deployment Skills, MCP servers, and opt-in command hooks; saved Agent teams run as isolated Subagent graphs.
+- **Scheduled Chats (experimental):** Run saved Agents with presets or custom cron, selectable time zones, multi-day weekly cadence, and optional Chat Project destinations.
+- **Memory and context:** Agents can use optionally isolated memory, preserve adaptive context fading across turns, and show categorized current-window usage, tokens, and optional cost.
+- **Editable long pastes:** Long pasted text becomes an editable attachment that can be moved back into the composer; attachment-only turns and reliable Upload as Text downloads are also supported.
+- **Projects, settings, and navigation:** Search conversation titles and message contents, manage project chats, use searchable settings and shortcuts, pin chats, choose clock/week conventions, and navigate faster on mobile.
+- **Sharing and artifacts:** Stable shared links support personal copies; fullscreen previews, Mermaid export, PowerPoint templates, shell scripts, and original Office downloads expand file workflows.
+- **Web search:** Keenable adds keyless search and page fetch, while SearXNG and Tavily gain richer controls and all web-tool egress uses stronger SSRF protection.
+- **Security and authentication:** Default HTTP security headers, opt-in nonce CSP, authenticated local images, per-user Code Interpreter JWTs, stable SAML identity binding, live-session OpenID token refresh, and retired JWT-secret rejection harden deployments.
+- **Models and reasoning:** Added GPT-5.6 with Responses reasoning controls, Claude Fable 5.1, Opus 5, and Sonnet 5, plus Gemini 3.8/3.7/3.6 Flash and Gemini 3.5 Flash-Lite.
+- **Langfuse observability:** Configure encrypted in-app connections, tenant fanout, authenticated gateways, export-decision telemetry, and authorized session links in chats and shared views.
+- **Administration:** Source-aware content filters can audit or block model-bound data, while tenant Insights, delegated configuration, encrypted secrets, and expiring violation scores improve operations.
+- **Streaming and reliability:** Adaptive smoothing, Redis delta batching and failover recovery, automatic generation protocol v2, live MCP catalog refresh, Agent circuit breakers, and DocumentDB support improve long runs and scaled deployments.
+
+Read the [full v0.8.8-rc2 changelog](https://www.librechat.ai/changelog/v0.8.8-rc2).
+
+---
+
 This repository powers **[www.librechat.ai](https://www.librechat.ai)**: the docs, guides, blog, and changelog for LibreChat. It is a [Next.js](https://nextjs.org) application built on [Fumadocs](https://fumadocs.dev), with content authored in MDX.
 
-> Looking for the LibreChat app itself? It lives at **[danny-avila/LibreChat](https://github.com/danny-avila/LibreChat)**. Open code and product issues there, and documentation issues here.
+> Looking for the LibreChat app itself? It lives at **[LibreChat-AI/LibreChat](https://github.com/LibreChat-AI/LibreChat)**. Open code and product issues there, and documentation issues here.
 
 ## Table of Contents
 
+- [What's New in LibreChat v0.8.8-rc2](#whats-new-in-librechat-v088-rc2)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Getting Started](#getting-started)
@@ -73,7 +101,7 @@ This repository powers **[www.librechat.ai](https://www.librechat.ai)**: the doc
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org) **20.19+**
+- [Node.js](https://nodejs.org) **22.x–24.x** (CI and production run 24)
 - [pnpm](https://pnpm.io) **9.5+**
 
 ### Setup
@@ -96,6 +124,18 @@ pnpm dev
 Open [http://localhost:3333](http://localhost:3333) to view the site.
 
 > Environment variables are optional for local docs work. You only need to fill in `.env.local` to exercise features like Ask AI or rate limiting. Always run `pnpm build` before opening a PR to catch build errors early.
+
+### Web Bot Auth
+
+Generate an Ed25519 signing key, then copy the printed assignment into `.env.local`:
+
+```bash
+pnpm web-bot-auth:keygen
+```
+
+In the production secret manager, store the JSON between the single quotes as the `WEB_BOT_AUTH_PRIVATE_JWK` value.
+
+Set `WEB_BOT_AUTH_AGENT_ORIGIN` when the public site origin is not `https://www.librechat.ai`. The app publishes the corresponding public JWKS at `/.well-known/http-message-signatures-directory` and signs requests from the docs AI agent. The directory returns `503` and agent requests fail closed until the private key is configured, so a deployment cannot advertise an empty key set or silently send unsigned agent traffic.
 
 ## Project Structure
 
@@ -133,20 +173,21 @@ Only pages listed in the `pages` array appear in the sidebar, in the order given
 
 ## Available Scripts
 
-| Command                | Description                                   |
-| ---------------------- | --------------------------------------------- |
-| `pnpm dev`             | Start the dev server on port 3333             |
-| `pnpm build`           | Production build                              |
-| `pnpm start`           | Start the production server on port 3333      |
-| `pnpm lint`            | Run ESLint (zero warnings allowed)            |
-| `pnpm lint:prettier`   | Check formatting with Prettier                |
-| `pnpm prettier`        | Format the codebase with Prettier             |
-| `pnpm typecheck`       | Generate MDX types and run `tsc --noEmit`     |
-| `pnpm test`            | Run the Vitest suite                          |
-| `pnpm test:watch`      | Run Vitest in watch mode                      |
-| `pnpm analyze`         | Build and analyze the production bundle size  |
-| `pnpm optimize:images` | Optimize images in `public/`                  |
-| `pnpm translate`       | Generate translations from the English source |
+| Command                    | Description                                   |
+| -------------------------- | --------------------------------------------- |
+| `pnpm dev`                 | Start the dev server on port 3333             |
+| `pnpm build`               | Production build                              |
+| `pnpm start`               | Start the production server on port 3333      |
+| `pnpm lint`                | Run ESLint (zero warnings allowed)            |
+| `pnpm lint:prettier`       | Check formatting with Prettier                |
+| `pnpm prettier`            | Format the codebase with Prettier             |
+| `pnpm typecheck`           | Generate MDX types and run `tsc --noEmit`     |
+| `pnpm test`                | Run the Vitest suite                          |
+| `pnpm test:watch`          | Run Vitest in watch mode                      |
+| `pnpm analyze`             | Build and analyze the production bundle size  |
+| `pnpm optimize:images`     | Optimize images in `public/`                  |
+| `pnpm web-bot-auth:keygen` | Generate an Ed25519 Web Bot Auth private JWK  |
+| `pnpm translate`           | Generate translations from the English source |
 
 ## Contributing
 
@@ -157,14 +198,14 @@ Contributions are welcome, from fixing a typo to writing a whole new guide.
 3. Before opening a PR, run `pnpm lint`, `pnpm typecheck`, and `pnpm build`.
 4. Open a pull request describing what you changed and why.
 
-For questions about the documentation, join the [Discord](https://discord.librechat.ai). For issues with the LibreChat application itself, please use the [main repository](https://github.com/danny-avila/LibreChat).
+For questions about the documentation, join the [Discord](https://discord.librechat.ai). For issues with the LibreChat application itself, please use the [main repository](https://github.com/LibreChat-AI/LibreChat).
 
 ## Community & Support
 
 - 🌐 **Website:** [www.librechat.ai](https://www.librechat.ai)
 - 💬 **Discord:** [discord.librechat.ai](https://discord.librechat.ai)
 - 🧠 **Ask DeepWiki:** [deepwiki.com/LibreChat-AI/librechat.ai](https://deepwiki.com/LibreChat-AI/librechat.ai)
-- 🚀 **Main app:** [danny-avila/LibreChat](https://github.com/danny-avila/LibreChat)
+- 🚀 **Main app:** [LibreChat-AI/LibreChat](https://github.com/LibreChat-AI/LibreChat)
 
 ## License
 
